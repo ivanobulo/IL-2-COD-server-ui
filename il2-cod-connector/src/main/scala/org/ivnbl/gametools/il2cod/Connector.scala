@@ -6,7 +6,6 @@ import scala.collection.mutable.Queue
 import java.io._
 
 class Connector(hostname: String, port: Int) extends Runnable {
-  var observer: CommandResponseObserver = LoggingCallback
   var commandTimeout = 10000
   private val log = LoggerFactory.getLogger(classOf[Connector])
   private val commandPool = new Queue[QueuedCommand]()
@@ -26,12 +25,8 @@ class Connector(hostname: String, port: Int) extends Runnable {
         !Thread.currentThread.isInterrupted && TelnetSession.isConnected
       }
       while (runCondition) {
-        readNextBlock(TelnetSession.reader, observer, () => runCondition)
-
-        //Execute command if there is one in the queue
-        if (!commandPool.isEmpty) {
-          executeCommand(() => runCondition, commandPool.dequeue())
-        }
+        readNextBlock(() => runCondition)
+        OutputObserver.checkForQueuedCommands()
         //Wait for the next portion of data
         Thread.sleep(100)
       }
@@ -46,23 +41,44 @@ class Connector(hostname: String, port: Int) extends Runnable {
     }
   }
 
-  private def executeCommand(runCondition: () => Boolean, queuedCommand:QueuedCommand) {
-    val observer = new DelegateToObserver
-    observer.setDelegateObserver(queuedCommand.observer)
-    //Execute command
-    TelnetSession.writer.write(queuedCommand.cmd)
-    TelnetSession.writer.write('\n')
-    TelnetSession.writer.flush()
-    //Read response
-    var waitTime = 0
-    def waitTooLong = waitTime > commandTimeout
-    while (runCondition() && !observer.noMoreMessagesReceived && !waitTooLong) {
-      readNextBlock(TelnetSession.reader, observer, runCondition)
-      //Wait for the next portion of data
-      Thread.sleep(100)
-      waitTime += 100
+  private object OutputObserver {
+    var currentCommand: QueuedCommand = null
+
+    def receivedLine(msg: String) {
+      if (null == currentCommand) {
+        //log
+        LoggingCallback.receiveLine(msg)
+      } else {
+        //notify command observer
+        currentCommand.observer.receiveLine(msg)
+      }
     }
-    log.debug("No more response from command '{}'", queuedCommand.cmd)
+
+    def endOfOutput() {
+      if (null != currentCommand) {
+        log.debug("No more response from command '{}'", currentCommand.cmd)
+        currentCommand.observer.noMoreMessages()
+        currentCommand = null
+      }
+      checkForQueuedCommands()
+    }
+
+    def checkForQueuedCommands() {
+      if (currentCommand != null) {
+        return
+      }
+      //Execute command from queue if there is one
+      if (!commandPool.isEmpty) {
+        currentCommand = commandPool.dequeue()
+        executeCommand(currentCommand)
+      }
+    }
+
+    private def executeCommand(queuedCommand: QueuedCommand) {
+      TelnetSession.writer.write(queuedCommand.cmd)
+      TelnetSession.writer.write('\n')
+      TelnetSession.writer.flush()
+    }
   }
 
   private class QueuedCommand(var cmd: String, var observer: CommandResponseObserver) {
@@ -86,57 +102,33 @@ class Connector(hostname: String, port: Int) extends Runnable {
     def isConnected = telnetClient.isConnected
   }
 
-  private def readNextBlock(reader: BufferedReader, receiver: CommandResponseObserver,
-                            runCondition: () => Boolean, waitInterval: Int = 100) {
+  private def readNextBlock(runCondition: () => Boolean) {
     var endOfMessage = false
 
-    while (reader.ready && runCondition() && !endOfMessage) {
-      var line: String = reader.readLine
+    while (TelnetSession.reader.ready && runCondition() && !endOfMessage) {
+      var line: String = TelnetSession.reader.readLine
       if (line == null) {
-        Thread.sleep(waitInterval)
+        Thread.sleep(100)
       } else {
         if (0 <= line.indexOf("<consoleN>")) {
-          receiver.noMoreMessages()
+          OutputObserver.endOfOutput()
           endOfMessage = true
         } else if (!line.trim.isEmpty) {
-          receiver.receiveMsg(line)
+          OutputObserver.receivedLine(line)
         }
       }
     }
   }
 
   object LoggingCallback extends CommandResponseObserver {
-    def receiveMsg(msg: String) {
+    def receiveLine(msg: String) {
       log.debug("Received: {}", msg)
     }
   }
-
-  class DelegateToObserver extends CommandResponseObserver {
-    var noMoreMessagesReceived = false
-    private var delegate: CommandResponseObserver = null
-
-    def setDelegateObserver(delegate: CommandResponseObserver) {
-      this.delegate = delegate
-    }
-
-    def receiveMsg(msg: String) {
-      if (null != delegate) {
-        delegate.receiveMsg(msg)
-      }
-    }
-
-    override def noMoreMessages() {
-      if (null != delegate) {
-        delegate.noMoreMessages()
-      }
-      noMoreMessagesReceived = true
-    }
-  }
-
 }
 
 trait CommandResponseObserver {
-  def receiveMsg(msg: String)
+  def receiveLine(msg: String)
 
   def noMoreMessages() {}
 }

@@ -33,7 +33,7 @@ object RunConsoleApp {
         val cmd = scanner.nextLine
         if (cmd.trim.isEmpty) stop += 1
         conn.sendCommand(cmd, new CommandResponseObserver {
-          def receiveMsg(msg: String) {
+          def receiveLine(msg: String) {
             log.debug("Command '{}' response: {}", cmd, msg)
           }
         })

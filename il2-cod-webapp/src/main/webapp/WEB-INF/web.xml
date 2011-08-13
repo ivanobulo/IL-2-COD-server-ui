@@ -4,4 +4,24 @@
 
 <web-app>
   <display-name>Archetype Created Web Application</display-name>
+    <servlet>
+        <servlet-name>CodUiServlet</servlet-name>
+        <servlet-class>org.ivnbl.gametools.il2cod.CodUiServlet</servlet-class>
+    </servlet>
+
+    <servlet>
+        <servlet-name>VaadinStaticResourceServlet</servlet-name>
+        <servlet-class>org.ivnbl.gametools.il2cod.VaadinStaticResourceServlet</servlet-class>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>VaadinStaticResourceServlet</servlet-name>
+        <url-pattern>/VAADIN/*</url-pattern>
+    </servlet-mapping>
+
+    <servlet-mapping>
+        <servlet-name>CodUiServlet</servlet-name>
+        <url-pattern>/*</url-pattern>
+    </servlet-mapping>
+
 </web-app>

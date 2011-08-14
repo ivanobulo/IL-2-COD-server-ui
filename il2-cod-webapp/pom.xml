@@ -3,8 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.ivnbl.gametools</groupId>
     <artifactId>il2-cod-webapp</artifactId>
-    <packaging>war</packaging>
-    <version>0.1.0-SNAPSHOT</version>
+    <packaging>bundle</packaging>
     <name>il2-cod-webapp Maven Webapp</name>
     <url>http://maven.apache.org</url>
     <parent>
@@ -25,6 +24,14 @@
         </pluginRepository>
     </pluginRepositories>
     <dependencies>
+        <dependency>
+            <groupId>org.ivnbl.gametools</groupId>
+            <artifactId>il2-cod-shared</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ivnbl.gametools</groupId>
+            <artifactId>il2-adminconsole-plugin</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.weiglewilczek.scala-lang-osgi</groupId>
             <artifactId>scala-library</artifactId>
@@ -49,7 +56,13 @@
         </dependency>
         <dependency>
             <groupId>org.osgi</groupId>
-            <artifactId>org.osgi.enterprise</artifactId>
+            <artifactId>org.osgi.compendium</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.ops4j.pax.logging</groupId>
+            <artifactId>pax-logging-api</artifactId>
+            <version>1.6.1</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -69,8 +82,8 @@
                 <artifactId>maven-pax-plugin</artifactId>
                 <configuration>
                     <provision>
-                        <param>--platform=felix</param>
-                        <param>--profiles=compendium,war,config,confman</param>
+                        <param>--platform=equinox</param>
+                        <param>--profiles=compendium,web,config,confman,ds</param>
                         <param>--deployURLs=mvn:com.vaadin/vaadin/6.5.4,mvn:com.weiglewilczek.scala-lang-osgi/scala-library/${scala.version},mvn:org.ops4j/peaberry/1.1.1,mvn:com.google.inject/guice/3.0</param>
                     </provision>
                 </configuration>
@@ -101,10 +114,10 @@
                 <artifactId>gwt-maven-plugin</artifactId>
                 <version>2.2.0</version>
                 <configuration>
-                    <!-- if you don't specify any modules, the plugin will find them -->
-                    <!--modules>
+                    <!-- if you don't specify any adminModules, the plugin will find them -->
+                    <!--adminModules>
                         ..
-                    </modules-->
+                    </adminModules-->
                     <webappDirectory>${project.build.directory}/${project.build.finalName}/VAADIN/widgetsets
                     </webappDirectory>
                     <extraJvmArgs>-Xmx512M -Xss1024k</extraJvmArgs>
@@ -131,11 +144,11 @@
                 <executions>
                     <execution>
                         <configuration>
-                            <!-- if you don't specify any modules, the plugin will find them -->
+                            <!-- if you don't specify any adminModules, the plugin will find them -->
                             <!--
-                            <modules>
+                            <adminModules>
                                 <module>${package}.gwt.MyWidgetSet</module>
-                            </modules>
+                            </adminModules>
                             -->
                         </configuration>
                         <goals>
@@ -157,11 +170,27 @@
                 <artifactId>maven-bundle-plugin</artifactId>
                 <extensions>true</extensions>
                 <configuration>
+<!--
                     <supportedProjectTypes>
                         <supportedProjectType>jar</supportedProjectType>
                         <supportedProjectType>bundle</supportedProjectType>
                         <supportedProjectType>war</supportedProjectType>
                     </supportedProjectTypes>
+-->
+                    <instructions>
+<!--
+                        <Require-Bundle>com.vaadin</Require-Bundle>
+                        <Bundle-ClassPath>.,WEB-INF/classes</Bundle-ClassPath>
+                        <Embed-Directory>WEB-INF/lib</Embed-Directory>
+                        <Embed-Dependency>*;scope=compile|runtime</Embed-Dependency>
+                        <Embed-Transitive>true</Embed-Transitive>
+                        <Web-ContextPath>/il2-cod-ui</Web-ContextPath>
+                        <Webapp-Context>/il2-cod-ui</Webapp-Context>
+-->
+                        <Webapp-Context>/il2-cod-ui</Webapp-Context>
+                        <Service-Component>org.ivnbl.gametools.il2cod.*</Service-Component>
+
+                    </instructions>
                 </configuration>
                 <executions>
                     <execution>
@@ -170,20 +199,6 @@
                         <goals>
                             <goal>manifest</goal>
                         </goals>
-                        <configuration>
-                            <instructions>
-<!--
-                                <Bundle-Activator>org.ivnbl.gametools.il2cod.CodUiActivator</Bundle-Activator>
--->
-                                <Require-Bundle>com.vaadin</Require-Bundle>
-                                <Bundle-ClassPath>.,WEB-INF/classes</Bundle-ClassPath>
-                                <Embed-Directory>WEB-INF/lib</Embed-Directory>
-                                <Embed-Dependency>*;scope=compile|runtime</Embed-Dependency>
-                                <Embed-Transitive>true</Embed-Transitive>
-                                <Web-ContextPath>/il2-cod-ui</Web-ContextPath>
-                                <Webapp-Context>/il2-cod-ui</Webapp-Context>
-                            </instructions>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>

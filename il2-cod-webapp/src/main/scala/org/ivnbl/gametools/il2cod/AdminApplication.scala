@@ -1,19 +1,30 @@
 package org.ivnbl.gametools.il2cod
 
 import com.vaadin.{Application => VaadinApp}
-import com.vaadin.ui._
+import services.ui.{AdminModule, ModuleService, ModuleServiceListener}
 
-class AdminApplication extends VaadinApp {
+class AdminApplication(moduleService:ModuleService) extends VaadinApp with ModuleServiceListener {
+  private var mainWindow:CodUiAdminWindow = null
+
   def init() {
-    val mainWindow = new Window("Hello World Application");
-    val label = new Label("Greetings, Vaadin user!");
-    mainWindow.addComponent(label);
-
-    val comboBox: ComboBox = new ComboBox()
-    comboBox.addItem(new Label("Apple"))
-    comboBox.addItem(new Label("Orange"))
-    mainWindow.addComponent(comboBox)
-
+    mainWindow = new CodUiAdminWindow(moduleService.adminModules)
+    //Register listener
+    moduleService addListener this
+    //Complete initialization
     setMainWindow(mainWindow);
+  }
+
+  override def close() {
+    super.close()
+    //Remove listener
+    moduleService removeListener this
+  }
+
+  def moduleRegistered(service: ModuleService, adminModule: AdminModule) {
+    mainWindow.addTab(adminModule)
+  }
+
+  def moduleUnregistered(service: ModuleService, adminModule: AdminModule) {
+    mainWindow.removeTab(adminModule.name)
   }
 }

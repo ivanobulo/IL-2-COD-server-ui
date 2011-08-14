@@ -2,16 +2,23 @@ package org.ivnbl.gametools.il2cod
 
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest, HttpServlet}
 import java.util.{Calendar, Date}
-import java.io.{IOException, InputStream, OutputStream}
-import java.util.logging.Logger
+import java.io.{InputStream, OutputStream}
+import org.slf4j.LoggerFactory
+import javax.servlet.ServletConfig
 
 class VaadinStaticResourceServlet extends HttpServlet {
-  val logger = Logger.getLogger(getClass.getName)
+  val log = LoggerFactory.getLogger(getClass)
 
   var servletInitDate: Date = null
 
   override def init() {
+    super.init()
     servletInitDate = new Date()
+  }
+
+  override def init(servletConfig: ServletConfig) {
+    super.init(servletConfig)
+    log.info("Servlet Name: {}", servletConfig.getServletName)
   }
 
 
@@ -33,7 +40,7 @@ class VaadinStaticResourceServlet extends HttpServlet {
   }
 
   private def streamRequestedResource(req: HttpServletRequest, resp: HttpServletResponse) {
-    //Use Vaadin bundle classloader to provide static resources
+    //Use Vaadin bundle class loader to provide static resources
     val pathToResource = "/VAADIN" + req.getPathInfo
     val resourceInStream = classOf[com.vaadin.Application].getResourceAsStream(pathToResource)
     try {
@@ -44,7 +51,7 @@ class VaadinStaticResourceServlet extends HttpServlet {
       }
       streamResource(resp.getOutputStream, resourceInStream)
     } finally {
-      resourceInStream.close()
+      if (null != resourceInStream) resourceInStream.close()
     }
   }
 
